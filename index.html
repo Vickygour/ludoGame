@@ -1,0 +1,440 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Ludo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:radial-gradient(1000px 700px at 15% 0%,#2c3a6b 0%,#1a2240 55%,#0e1322 100%);color:#eef1fa;min-height:100vh;touch-action:manipulation;overflow-x:hidden}
+#app{display:flex;gap:22px;align-items:center;justify-content:center;flex-wrap:wrap;min-height:100vh;padding:16px}
+#board-wrap{position:relative;width:min(94vw,calc(100vh - 90px),600px);aspect-ratio:1;flex:0 0 auto}
+#board{position:absolute;inset:0;display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);background:#f6f7fc;border-radius:12px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.5),0 0 0 4px rgba(255,255,255,.08)}
+.cell{border:1px solid rgba(30,35,60,.22);position:relative}
+.bd-red{background:#e0483f}.bd-green{background:#3fae4a}.bd-yellow{background:#f2c027}.bd-blue{background:#3b82f6}
+.cell.star::after{content:'★';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(var(--cell,30px)*.72);color:rgba(0,0,0,.35);pointer-events:none}
+.cell.bd-red.star::after,.cell.bd-green.star::after,.cell.bd-yellow.star::after,.cell.bd-blue.star::after{color:rgba(255,255,255,.9)}
+.cell.centercell{background:#f6f7fc}
+.yardbox{position:absolute;background:#fff;border-radius:16%;box-shadow:inset 0 0 0 2px rgba(0,0,0,.06);transition:box-shadow .3s}
+.yardbox.active{box-shadow:inset 0 0 0 3px #fff,0 0 0 4px rgba(255,255,255,.65),0 0 26px 8px rgba(255,255,255,.45);animation:yglow 1.2s infinite alternate}
+@keyframes yglow{from{filter:brightness(1)}to{filter:brightness(1.06)}}
+.slot{position:absolute;width:calc(var(--cell,30px)*.92);height:calc(var(--cell,30px)*.92);border-radius:50%;transform:translate(-50%,-50%);border:2px dashed;opacity:.5}
+.slot.s-red{border-color:#e0483f}.slot.s-green{border-color:#3fae4a}.slot.s-yellow{border-color:#f2c027}.slot.s-blue{border-color:#3b82f6}
+#center{position:absolute;left:40%;top:40%;width:20%;height:20%}
+.tri{position:absolute;inset:0}
+.tri.t-red{background:#e0483f;clip-path:polygon(0% 50%,50% 0%,50% 100%)}
+.tri.t-green{background:#3fae4a;clip-path:polygon(50% 0%,0% 50%,100% 50%)}
+.tri.t-yellow{background:#f2c027;clip-path:polygon(100% 50%,50% 0%,50% 100%)}
+.tri.t-blue{background:#3b82f6;clip-path:polygon(50% 100%,0% 50%,100% 50%)}
+.center-badge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:52%;height:52%;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:calc(var(--cell,30px)*.9);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.token{position:absolute;width:calc(var(--cell,30px)*.8);height:calc(var(--cell,30px)*.8);border-radius:50%;transform:translate(-50%,-50%);transition:left .17s ease,top .17s ease,width .18s,height .18s;z-index:5;border:2px solid rgba(255,255,255,.95);box-shadow:0 3px 5px rgba(0,0,0,.4),inset 0 calc(var(--cell,30px)*-.13) 0 rgba(0,0,0,.28);pointer-events:none}
+.token::after{content:'';position:absolute;left:20%;top:12%;width:34%;height:28%;border-radius:50%;background:rgba(255,255,255,.5)}
+.token.t-red{background:#e0483f}.token.t-green{background:#3fae4a}.token.t-yellow{background:#f2c027}.token.t-blue{background:#3b82f6}
+.token.movable{z-index:20;pointer-events:auto;cursor:pointer}
+.token.movable::before{content:'';position:absolute;inset:-32%;border-radius:50%;border:3px solid #fff;animation:ringp .9s infinite}
+@keyframes ringp{0%{transform:scale(.65);opacity:1}100%{transform:scale(1.3);opacity:0}}
+.token.bounce{animation:tbounce .45s}
+@keyframes tbounce{0%{scale:1}45%{scale:1.55}100%{scale:1}}
+#panel{width:min(320px,94vw);display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:18px;backdrop-filter:blur(10px);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+#panel h1{font-size:22px;letter-spacing:5px;text-align:center;font-weight:800;color:#ffd76a;text-shadow:0 2px 8px rgba(0,0,0,.4)}
+#turn-card{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);border-radius:12px;padding:10px 12px}
+#turn-dot{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:inset 0 -4px 0 rgba(0,0,0,.25);flex:0 0 auto}
+#turn-name{font-weight:700;font-size:16px}
+#turn-sub{font-size:12px;opacity:.75;min-height:14px}
+#mute-btn{margin-left:auto;background:rgba(255,255,255,.1);border:none;border-radius:8px;color:#fff;font-size:16px;width:34px;height:34px;cursor:pointer}
+#msg{min-height:38px;font-size:14px;text-align:center;color:#ffd76a;font-weight:600;line-height:1.3}
+#dice{width:72px;height:72px;background:#fff;border-radius:14px;display:grid;grid-template-columns:repeat(3,1fr);padding:11px;gap:5px;box-shadow:0 5px 14px rgba(0,0,0,.45),inset 0 -4px 0 rgba(0,0,0,.08);margin:0 auto;border:3px solid #888;transition:border-color .3s;user-select:none}
+#dice.clickable{cursor:pointer}
+#dice.clickable:hover{transform:scale(1.06)}
+#dice .pip{background:#1a2233;border-radius:50%;visibility:hidden}
+#dice .pip.on{visibility:visible}
+#dice.rolling{animation:dshake .28s infinite}
+@keyframes dshake{0%{transform:rotate(0)}25%{transform:rotate(18deg) scale(1.08)}50%{transform:rotate(-14deg)}75%{transform:rotate(9deg)}100%{transform:rotate(0)}}
+#roll-btn{padding:13px;border-radius:12px;border:none;font-size:16px;font-weight:800;letter-spacing:1px;background:linear-gradient(180deg,#ffd76a,#f5a623);color:#3a2500;cursor:pointer;box-shadow:0 5px 14px rgba(245,166,35,.35);transition:transform .1s,opacity .2s}
+#roll-btn:not(:disabled):active{transform:scale(.96)}
+#roll-btn:disabled{opacity:.35;cursor:not-allowed}
+#plist{display:flex;flex-direction:column;gap:6px}
+.prow{display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.05)}
+.prow.cur{background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+.pdot{width:13px;height:13px;border-radius:50%;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);flex:0 0 auto}
+.pname{flex:1;font-size:14px;font-weight:600}
+.phome i{display:inline-block;width:9px;height:9px;border-radius:50%;border:1px solid rgba(255,255,255,.45);margin-left:3px;vertical-align:middle}
+.phome i.fd{background:var(--d);border-color:transparent}
+.btn2{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#eef1fa;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn2:hover{background:rgba(255,255,255,.16)}
+.overlay{position:fixed;inset:0;background:rgba(9,13,24,.8);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;z-index:100;padding:14px;overflow:hidden}
+.hidden{display:none!important}
+.card{background:rgba(28,36,66,.92);border:1px solid rgba(255,255,255,.15);border-radius:22px;padding:26px;width:min(430px,94vw);box-shadow:0 24px 70px rgba(0,0,0,.6);text-align:center;position:relative;z-index:2;max-height:92vh;overflow-y:auto}
+.card h1{font-size:38px;letter-spacing:7px;color:#ffd76a;text-shadow:0 3px 10px rgba(0,0,0,.5);margin-bottom:6px}
+.subtitle{font-size:13.5px;opacity:.8;margin-bottom:18px;line-height:1.4}
+.srow{display:flex;align-items:center;gap:10px;padding:8px 4px}
+.sdot{width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25);flex:0 0 auto}
+.sname{flex:1;text-align:left;font-weight:700;font-size:15px}
+.seg{display:flex;border-radius:9px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+.seg button{padding:7px 10px;background:transparent;color:#9aa3c0;border:none;font-size:12.5px;cursor:pointer;font-family:inherit;font-weight:600}
+.seg button.on{background:#fff;color:#1c2442}
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.presets button{padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:#eef1fa;font-size:12.5px;cursor:pointer;font-family:inherit;font-weight:600}
+.presets button:hover{background:rgba(255,255,255,.16)}
+#start-btn,#again-btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:17px;font-weight:800;letter-spacing:1px;background:linear-gradient(180deg,#ffd76a,#f5a623);color:#3a2500;cursor:pointer;box-shadow:0 6px 16px rgba(245,166,35,.4);margin-top:4px}
+.hint{font-size:11.5px;opacity:.55;margin-top:14px;line-height:1.6}
+#win-trophy{font-size:70px;animation:tro 1s infinite alternate}
+@keyframes tro{from{transform:rotate(-8deg) scale(1)}to{transform:rotate(8deg) scale(1.12)}}
+#win-title{margin:8px 0 4px}
+#win-sub{opacity:.75;font-size:14px;margin-bottom:18px}
+#setup-btn{width:100%;margin-top:10px}
+.conf{position:absolute;top:-24px;border-radius:2px;z-index:1;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(740deg)}}
+@media (max-width:720px){#app{padding-top:12px}#panel{order:2}#board-wrap{width:min(94vw,58vh)}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="board-wrap"><div id="board"></div></div>
+  <div id="panel">
+    <h1>LUDO</h1>
+    <div id="turn-card">
+      <div id="turn-dot"></div>
+      <div><div id="turn-name">—</div><div id="turn-sub"></div></div>
+      <button id="mute-btn" title="Sound on/off">🔊</button>
+    </div>
+    <div id="msg">Welcome!</div>
+    <div id="dice"></div>
+    <button id="roll-btn">🎲 ROLL</button>
+    <div id="plist"></div>
+    <button id="newgame-btn" class="btn2">New Game / Setup</button>
+  </div>
+</div>
+
+<div id="setup" class="overlay">
+  <div class="card">
+    <h1>🎲 LUDO</h1>
+    <p class="subtitle">Race your 4 pieces around the board and into the center.<br>Roll a <b>6</b> to leave the yard!</p>
+    <div id="setup-rows"></div>
+    <div class="presets">
+      <button data-preset="1p">You vs 3 CPUs</button>
+      <button data-preset="2p">2 Players</button>
+      <button data-preset="4p">4 Players</button>
+      <button data-preset="cpu">Watch CPUs Play</button>
+    </div>
+    <button id="start-btn">Start Game</button>
+    <p class="hint">Tap the dice or press <b>Space</b> to roll · ★ squares are safe · Extra turn for rolling a 6, capturing, or finishing a piece · Three 6s in a row skips your turn</p>
+  </div>
+</div>
+
+<div id="win" class="overlay hidden">
+  <div id="confetti"></div>
+  <div class="card">
+    <div id="win-trophy">🏆</div>
+    <h1 id="win-title">Red wins!</h1>
+    <p id="win-sub">All four pieces are home.</p>
+    <button id="again-btn">Play Again</button>
+    <button id="setup-btn2" class="btn2">Change Players</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------------- BOARD DATA ---------------- */
+const COLORS=['red','green','yellow','blue'];
+const HEX={red:'#e0483f',green:'#3fae4a',yellow:'#f2c027',blue:'#3b82f6'};
+const NAMES={red:'Red',green:'Green',yellow:'Yellow',blue:'Blue'};
+const TRACK=[[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+const START={red:0,green:13,yellow:26,blue:39};
+const SAFE=new Set([0,8,13,21,26,34,39,47]);
+const ENTRIES={red:50,green:11,yellow:24,blue:37};
+const HOME={red:[[7,1],[7,2],[7,3],[7,4],[7,5]],green:[[1,7],[2,7],[3,7],[4,7],[5,7]],yellow:[[7,13],[7,12],[7,11],[7,10],[7,9]],blue:[[13,7],[12,7],[11,7],[10,7],[9,7]]};
+const YARD_TL={red:[0,0],green:[0,9],yellow:[9,9],blue:[9,0]};
+function baseSlot(color,i){const[yr,yc]=YARD_TL[color];return[yr+(i<2?2.05:3.95),yc+(i%2?3.95:2.05)];}
+function cellOf(color,rel){ // returns [r,c] CELL indices (center = +0.5 later)
+  if(rel<=50)return TRACK[(START[color]+rel)%52];
+  return HOME[color][rel-51];
+}
+function finishedPos(color,k){const s=(k-1.5)*0.26;
+  if(color==='red')return[7.5+s,6.75];
+  if(color==='green')return[6.75,7.5+s];
+  if(color==='yellow')return[7.5+s,8.25];
+  return[8.25,7.5+s];
+}
+
+/* ---------------- SOUND ---------------- */
+let actx=null,muted=false;
+function ac(){if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(actx&&actx.state==='suspended')actx.resume();return actx;}
+function tone(f,d,type,v,dl){if(muted)return;const a=ac();if(!a)return;d=d||.12;type=type||'sine';v=v||.15;dl=dl||0;const t=a.currentTime+dl,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.05);}
+const sTick=()=>tone(660,.05,'triangle',.09);
+const sRoll=()=>{for(let i=0;i<6;i++)tone(280+Math.random()*520,.04,'square',.05,i*.08);};
+const sEnter=()=>{tone(440,.1,'sine',.16);tone(660,.13,'sine',.16,.1);};
+const sCapture=()=>{tone(320,.18,'sawtooth',.18);tone(150,.3,'sawtooth',.18,.12);};
+const sFinish=()=>[523,659,784,1046].forEach((f,i)=>tone(f,.16,'sine',.16,i*.09));
+const sSix=()=>{tone(880,.1,'sine',.13);tone(1320,.16,'sine',.13,.1);};
+const sWin=()=>[523,659,784,659,784,1046,1318].forEach((f,i)=>tone(f,.28,'sine',.2,i*.14));
+const sNo=()=>tone(200,.22,'sine',.14);
+
+/* ---------------- BUILD BOARD ---------------- */
+function buildBoard(){
+  const board=$('board');
+  const cls=Array.from({length:15},()=>Array(15).fill('cell'));
+  for(const[color]of Object.entries(YARD_TL)){const[yr,yc]=YARD_TL[color];
+    for(let r=yr;r<yr+6;r++)for(let c=yc;c<yc+6;c++)cls[r][c]+=' bd-'+color;}
+  TRACK.forEach(([r,c])=>cls[r][c]+=' trackcell');
+  for(const[color,idx]of Object.entries(START)){const[r,c]=TRACK[idx];cls[r][c]+=' bd-'+color+' star';}
+  for(const[color,idx]of Object.entries(ENTRIES)){const[r,c]=TRACK[idx];cls[r][c]+=' bd-'+color;}
+  for(const[color,cells]of Object.entries(HOME))cells.forEach(([r,c])=>cls[r][c]+=' bd-'+color);
+  [8,21,34,47].forEach(i=>{const[r,c]=TRACK[i];cls[r][c]+=' star';});
+  for(let r=6;r<=8;r++)for(let c=6;c<=8;c++)cls[r][c]+=' centercell';
+  for(let r=0;r<15;r++)for(let c=0;c<15;c++){const d=document.createElement('div');d.className=cls[r][c];board.appendChild(d);}
+  // yard inner boxes + base slots
+  for(const[color]of COLORS){const[yr,yc]=YARD_TL[color];
+    const box=document.createElement('div');box.className='yardbox';box.dataset.color=color;
+    box.style.left=((yc+1.1)/15*100)+'%';box.style.top=((yr+1.1)/15*100)+'%';
+    box.style.width=(3.8/15*100)+'%';box.style.height=(3.8/15*100)+'%';
+    board.appendChild(box);
+    for(let i=0;i<4;i++){const s=document.createElement('div');s.className='slot s-'+color;
+      const[r,c]=baseSlot(color,i);s.style.left=(c/15*100)+'%';s.style.top=(r/15*100)+'%';board.appendChild(s);}
+  }
+  // center home
+  const ctr=document.createElement('div');ctr.id='center';
+  for(const t of['red','green','yellow','blue']){const d=document.createElement('div');d.className='tri t-'+t;ctr.appendChild(d);}
+  const badge=document.createElement('div');badge.className='center-badge';badge.textContent='🏠';ctr.appendChild(badge);
+  board.appendChild(ctr);
+}
+buildBoard();
+const fitB=()=>{const b=$('board');b.style.setProperty('--cell',(b.clientWidth/15)+'px');};
+new ResizeObserver(fitB).observe($('board'));fitB();
+
+/* ---------------- DICE UI ---------------- */
+const PIPS={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const diceEl=$('dice');const pipEls=[];
+for(let i=0;i<9;i++){const s=document.createElement('span');s.className='pip';diceEl.appendChild(s);pipEls.push(s);}
+function setDiceFace(n){pipEls.forEach((p,i)=>p.classList.toggle('on',PIPS[n].includes(i)));}
+
+/* ---------------- GAME STATE ---------------- */
+let state='setup',players=[],turn=0,dice=1,phase='roll',sixStreak=0,movable=[],busy=false,gen=0,tokEls=[];
+let config={red:'human',green:'cpu',yellow:'cpu',blue:'cpu'};
+
+function initGame(){
+  gen++;
+  players=COLORS.filter(c=>config[c]!=='off').map(c=>({color:c,type:config[c],name:NAMES[c]+(config[c]==='cpu'?' CPU':(config[c]==='human'?' (You)':'')),tokens:[-1,-1,-1,-1]}));
+  turn=0;dice=1;phase='roll';sixStreak=0;movable=[];busy=false;state='playing';
+  // token elements
+  const board=$('board');
+  board.querySelectorAll('.token').forEach(t=>t.remove());
+  tokEls=[];
+  players.forEach((p,pi)=>{tokEls.push([]);
+    for(let ti=0;ti<4;ti++){const el=document.createElement('div');el.className='token t-'+p.color;el.dataset.pi=pi;el.dataset.ti=ti;board.appendChild(el);tokEls[pi].push(el);}
+  });
+  $('setup').classList.add('hidden');$('win').classList.add('hidden');
+  setDiceFace(1);renderTokens();updatePanel();
+  msg('Good luck! Roll a 6 to start.');
+  if(players[0].type==='cpu')setTimeout(()=>{if(state==='playing'&&phase==='roll'&&turn===0)rollDice();},900);
+}
+
+function msg(t){$('msg').textContent=t;}
+
+function updatePanel(){
+  if(!players.length)return;
+  const pl=players[turn];
+  $('turn-dot').style.background=HEX[pl.color];
+  $('turn-name').textContent=pl.name;
+  $('turn-sub').textContent=phase==='roll'?(pl.type==='human'?'Your roll — tap the dice':'Thinking…'):phase==='move'?'Choose a piece':'';
+  diceEl.style.borderColor=HEX[pl.color];
+  const can=state==='playing'&&pl.type==='human'&&phase==='roll'&&!busy;
+  $('roll-btn').disabled=!can;diceEl.classList.toggle('clickable',can);
+  $('plist').innerHTML=players.map((p,i)=>{
+    const fin=p.tokens.filter(r=>r===56).length;
+    const dots=[0,1,2,3].map(k=>`<i class="${k<fin?'fd':''}" style="--d:${HEX[p.color]}"></i>`).join('');
+    return `<div class="prow ${i===turn?'cur':''}"><span class="pdot" style="background:${HEX[p.color]}"></span><span class="pname">${p.name}</span><span class="phome">${dots}</span></div>`;
+  }).join('');
+  document.querySelectorAll('.yardbox').forEach(b=>b.classList.toggle('active',state==='playing'&&players[turn].color===b.dataset.color));
+}
+
+function renderTokens(bounceList){
+  const groups={};
+  const items=[];
+  players.forEach((p,pi)=>p.tokens.forEach((rel,ti)=>{
+    if(rel===56){items.push({pi,ti,fin:true});return;}
+    let r,c,key;
+    if(rel<0){[r,c]=baseSlot(p.color,ti);key='b'+pi+'-'+ti;}
+    else{const cell=cellOf(p.color,rel);r=cell[0]+0.5;c=cell[1]+0.5;key=r+','+c;}
+    (groups[key]=groups[key]||[]).push(items.length);
+    items.push({pi,ti,r,c,key});
+  }));
+  const finSeen={};
+  items.forEach(it=>{
+    const el=tokEls[it.pi][it.ti];const p=players[it.pi];
+    let r=it.r,c=it.c,scale=1;
+    if(it.fin){const k=finSeen[p.color]||0;finSeen[p.color]=k+1;[r,c]=finishedPos(p.color,k);scale=.55;}
+    else{const g=groups[it.key];const n=g.length;
+      if(n>1){const i=g.indexOf(items.indexOf(it));const ang=i/n*Math.PI*2-Math.PI/2;
+        r+=Math.cos(ang)*.24;c+=Math.sin(ang)*.24;scale=n===2?.75:n===3?.66:.58;}
+    }
+    el.style.left=(c/15*100)+'%';el.style.top=(r/15*100)+'%';
+    el.style.width=`calc(var(--cell,30px)*${.8*scale})`;el.style.height=`calc(var(--cell,30px)*${.8*scale})`;
+    const mv=phase==='move'&&it.pi===turn&&movable.includes(it.ti)&&!it.fin;
+    el.classList.toggle('movable',mv);
+    if(bounceList&&bounceList.some(b=>b.pi===it.pi&&b.ti===it.ti)){el.classList.add('bounce');setTimeout(()=>el.classList.remove('bounce'),500);}
+  });
+}
+
+/* ---------------- RULES ---------------- */
+function computeMovable(p,d){
+  const list=[];
+  p.tokens.forEach((r,i)=>{if(r<0){if(d===6)list.push(i);}else if(r+d<=56)list.push(i);});
+  return list;
+}
+function threatened(color,rel){
+  if(rel<0||rel>50)return 0;
+  const g=(START[color]+rel)%52;
+  if(SAFE.has(g))return 0;
+  let n=0;
+  for(const op of players){if(op.color===color)continue;
+    for(const r2 of op.tokens){if(r2>=0&&r2<=50){const g2=(START[op.color]+r2)%52;const dist=(g-g2+52)%52;if(dist>=1&&dist<=6)n++;}}}
+  return n;
+}
+function scoreMove(pl,ti,d){
+  const rel=pl.tokens[ti];let s=0;
+  if(rel<0){s=25;const out=pl.tokens.filter(r=>r>=0&&r<=55).length;
+    if(out===0)s+=40;else if(out<2)s+=25;else if(out<4)s+=6;
+  }else{const nr=rel+d;
+    if(nr===56)s+=130;
+    else if(nr>50)s+=48+nr;
+    else{const g=(START[pl.color]+nr)%52;
+      if(!SAFE.has(g)){for(const op of players){if(op.color===pl.color)continue;
+        for(const r2 of op.tokens){if(r2>=0&&r2<=50&&(START[op.color]+r2)%52===g)s+=110;}}}
+      if(SAFE.has(g))s+=22;
+      s+=nr*.6;
+      s-=threatened(pl.color,nr)*15;
+      s+=threatened(pl.color,rel)*20;
+    }
+  }
+  return s+Math.random()*2;
+}
+
+/* ---------------- TURN FLOW ---------------- */
+async function rollDice(){
+  if(state!=='playing'||phase!=='roll'||busy)return;
+  const g=gen;busy=true;phase='rolling';
+  const pl=players[turn];updatePanel();
+  sRoll();diceEl.classList.add('rolling');
+  for(let i=0;i<8;i++){setDiceFace(1+Math.floor(Math.random()*6));await sleep(70);if(g!==gen)return;}
+  dice=1+Math.floor(Math.random()*6);
+  setDiceFace(dice);diceEl.classList.remove('rolling');
+  if(dice===6){sixStreak++;sSix();}else sixStreak=0;
+  if(sixStreak>=3){msg('Three 6s in a row — turn skipped!');sNo();await sleep(1100);if(g!==gen)return;endTurn(false,g);return;}
+  movable=computeMovable(pl,dice);
+  if(movable.length===0){msg(`${pl.name.split(' ')[0]} rolled ${dice} — no moves.`);sNo();await sleep(950);if(g!==gen)return;endTurn(false,g);return;}
+  if(movable.length===1){await sleep(380);if(g!==gen)return;executeMove(movable[0],g);return;}
+  if(pl.type==='cpu'){await sleep(650);if(g!==gen)return;
+    let best=movable[0],bs=-1e9;
+    for(const ti of movable){const s=scoreMove(pl,ti,dice);if(s>bs){bs=s;best=ti;}}
+    executeMove(best,g);return;}
+  phase='move';busy=false;msg(`Rolled ${dice} — choose a piece to move.`);
+  renderTokens();updatePanel();
+}
+
+async function executeMove(ti,g){
+  busy=true;phase='anim';movable=[];renderTokens();updatePanel();
+  const pl=players[turn],d=dice;
+  let rel=pl.tokens[ti],captured=[],finishedNow=false;
+  if(rel<0){pl.tokens[ti]=0;sEnter();renderTokens();await sleep(300);}
+  else{for(let s=rel+1;s<=rel+d;s++){pl.tokens[ti]=s;sTick();renderTokens();await sleep(175);}if(g!==gen)return;}
+  const nr=pl.tokens[ti];
+  if(nr<=50){
+    const gc=(START[pl.color]+nr)%52;
+    if(!SAFE.has(gc)){
+      players.forEach((op,pi)=>{if(op===pl)return;
+        op.tokens.forEach((r2,i2)=>{if(r2>=0&&r2<=50&&(START[op.color]+r2)%52===gc){op.tokens[i2]=-1;captured.push({pi,ti:i2});}});
+      });
+    }
+  }
+  if(nr===56){finishedNow=true;sFinish();}
+  if(captured.length){sCapture();msg(`${NAMES[pl.color]} captured ${captured.length>1?'pieces':'a piece'}!`);renderTokens(captured);await sleep(700);if(g!==gen)return;}
+  renderTokens();updatePanel();
+  if(pl.tokens.filter(r=>r===56).length===4){winGame(pl);return;}
+  const extra=(d===6)||captured.length>0||finishedNow;
+  if(extra&&!captured.length){msg(finishedNow?'Piece is home! Extra turn.':(d===6?'Rolled a 6 — extra turn!':''));}
+  await sleep(220);if(g!==gen)return;
+  endTurn(extra,g);
+}
+
+function endTurn(extra,g){
+  if(g!==undefined&&g!==gen)return;
+  if(state!=='playing')return;
+  if(!extra){turn=(turn+1)%players.length;sixStreak=0;}
+  phase='roll';busy=false;movable=[];
+  renderTokens();updatePanel();
+  const pl=players[turn];
+  if(pl.type==='cpu'){const g2=gen;setTimeout(()=>{if(g2===gen&&state==='playing'&&phase==='roll'&&players[turn]===pl)rollDice();},750);}
+  else msg('Your turn — roll the dice!');
+}
+
+function winGame(pl){
+  state='over';busy=false;
+  sWin();
+  $('win-title').textContent=NAMES[pl.color]+' Wins!';
+  $('win-title').style.color=HEX[pl.color];
+  $('win-sub').textContent=pl.name+' got all four pieces home.';
+  const c=$('confetti');c.innerHTML='';
+  for(let i=0;i<70;i++){const s=document.createElement('span');s.className='conf';
+    s.style.left=Math.random()*100+'%';
+    s.style.width=(5+Math.random()*7)+'px';s.style.height=(9+Math.random()*10)+'px';
+    s.style.background=Math.random()<.6?HEX[pl.color]:'#fff';
+    s.style.animationDuration=(2+Math.random()*2.5)+'s';s.style.animationDelay=(Math.random()*1.5)+'s';
+    c.appendChild(s);}
+  $('win').classList.remove('hidden');
+}
+
+/* ---------------- INPUT ---------------- */
+$('board').addEventListener('click',e=>{
+  const t=e.target.closest('.token');if(!t)return;
+  if(state!=='playing'||phase!=='move'||busy)return;
+  const pi=+t.dataset.pi,ti=+t.dataset.ti;
+  if(pi!==turn||!movable.includes(ti))return;
+  executeMove(ti,gen);
+});
+diceEl.addEventListener('click',()=>{if(state==='playing'&&phase==='roll'&&players[turn]&&players[turn].type==='human')rollDice();});
+$('roll-btn').addEventListener('click',()=>{if(state==='playing'&&phase==='roll'&&players[turn]&&players[turn].type==='human')rollDice();});
+document.addEventListener('keydown',e=>{
+  if((e.code==='Space'||e.code==='Enter')&&state==='playing'&&phase==='roll'&&players[turn]&&players[turn].type==='human'){e.preventDefault();rollDice();}
+});
+$('mute-btn').addEventListener('click',()=>{muted=!muted;$('mute-btn').textContent=muted?'🔇':'🔊';});
+
+/* ---------------- SETUP SCREEN ---------------- */
+function renderSetup(){
+  $('setup-rows').innerHTML=COLORS.map(c=>`
+    <div class="srow">
+      <span class="sdot" style="background:${HEX[c]}"></span>
+      <span class="sname">${NAMES[c]}</span>
+      <div class="seg" data-color="${c}">
+        ${['off','human','cpu'].map(t=>`<button data-t="${t}" class="${config[c]===t?'on':''}">${t==='off'?'Off':t==='human'?'Human':'CPU'}</button>`).join('')}
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+    config[b.parentElement.dataset.color]=b.dataset.t;renderSetup();tone(500,.06,'triangle',.08);
+  }));
+}
+document.querySelectorAll('.presets button').forEach(b=>b.addEventListener('click',()=>{
+  const p=b.dataset.preset;
+  if(p==='1p')config={red:'human',green:'cpu',yellow:'cpu',blue:'cpu'};
+  if(p==='2p')config={red:'human',green:'off',yellow:'human',blue:'off'};
+  if(p==='4p')config={red:'human',green:'human',yellow:'human',blue:'human'};
+  if(p==='cpu')config={red:'cpu',green:'cpu',yellow:'cpu',blue:'cpu'};
+  renderSetup();tone(500,.06,'triangle',.08);
+}));
+$('start-btn').addEventListener('click',()=>{
+  if(Object.values(config).filter(v=>v!=='off').length<2){msg('');alert('Select at least 2 players!');return;}
+  ac();initGame();
+});
+$('newgame-btn').addEventListener('click',()=>{state='setup';gen++;$('setup').classList.remove('hidden');renderSetup();});
+$('again-btn').addEventListener('click',()=>{ac();initGame();});
+$('setup-btn2').addEventListener('click',()=>{state='setup';gen++;$('win').classList.add('hidden');$('setup').classList.remove('hidden');renderSetup();});
+
+renderSetup();
+setDiceFace(6);
+</script>
+</body>
+</html>
